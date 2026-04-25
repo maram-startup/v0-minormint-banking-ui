@@ -1,24 +1,45 @@
 "use client"
 
 import { useState } from "react"
-import { X, Landmark, MapPin, ChevronRight, CreditCard, Banknote, Building2 } from "lucide-react"
+import { X, Landmark, MapPin, CreditCard, Banknote, Building2, Loader2, Shield, Navigation } from "lucide-react"
 
 interface CashOutModalProps {
   isOpen: boolean
   onClose: () => void
+  onSuccess: (details: { amount: string; method: string }) => void
 }
 
-export function CashOutModal({ isOpen, onClose }: CashOutModalProps) {
+const methods = [
+  { id: "atm" as const, icon: Banknote, title: "ATM Withdrawal", desc: "Find nearby ATMs", fee: "$0" },
+  { id: "bank" as const, icon: Building2, title: "Bank Transfer", desc: "1-3 business days", fee: "Free" },
+  { id: "card" as const, icon: CreditCard, title: "Debit Card", desc: "Instant to card", fee: "$1.50" },
+]
+
+const nearbyATMs = [
+  { name: "Chase ATM", distance: "0.2 mi", address: "123 Main St" },
+  { name: "Bank of America", distance: "0.5 mi", address: "456 Oak Ave" },
+  { name: "Wells Fargo", distance: "0.8 mi", address: "789 Pine Blvd" },
+]
+
+export function CashOutModal({ isOpen, onClose, onSuccess }: CashOutModalProps) {
   const [amount, setAmount] = useState("")
   const [method, setMethod] = useState<"atm" | "bank" | "card" | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
+
+  const handleCashOut = async () => {
+    if (!amount || !method) return
+    
+    setIsProcessing(true)
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+    setIsProcessing(false)
+    
+    const methodTitle = methods.find(m => m.id === method)?.title || ""
+    onSuccess({ amount, method: methodTitle })
+    setAmount("")
+    setMethod(null)
+  }
 
   if (!isOpen) return null
-
-  const methods = [
-    { id: "atm" as const, icon: Banknote, title: "ATM Withdrawal", desc: "Find nearby ATMs", fee: "$0" },
-    { id: "bank" as const, icon: Building2, title: "Bank Transfer", desc: "1-3 business days", fee: "Free" },
-    { id: "card" as const, icon: CreditCard, title: "Debit Card", desc: "Instant to card", fee: "$1.50" },
-  ]
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end justify-center">
@@ -62,7 +83,11 @@ export function CashOutModal({ isOpen, onClose }: CashOutModalProps) {
                 <button
                   key={val}
                   onClick={() => setAmount(val.toString())}
-                  className="px-4 py-2 rounded-full bg-[var(--glass)] border border-[var(--glass-border)] text-sm font-medium text-white hover:border-[#00FFA3]/50 hover:text-[#00FFA3] transition-colors"
+                  className={`px-4 py-2 rounded-full border text-sm font-medium transition-colors ${
+                    amount === val.toString()
+                      ? "bg-[#00FFA3]/10 border-[#00FFA3]/50 text-[#00FFA3]"
+                      : "bg-[var(--glass)] border-[var(--glass-border)] text-white hover:border-white/20"
+                  }`}
                 >
                   ${val}
                 </button>
@@ -96,7 +121,6 @@ export function CashOutModal({ isOpen, onClose }: CashOutModalProps) {
                   <p className={`text-sm font-medium ${m.fee === "Free" || m.fee === "$0" ? "text-[#00FFA3]" : "text-white"}`}>
                     {m.fee}
                   </p>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto" />
                 </div>
               </button>
             ))}
@@ -104,30 +128,92 @@ export function CashOutModal({ isOpen, onClose }: CashOutModalProps) {
           
           {/* ATM Locator Preview */}
           {method === "atm" && (
-            <div className="relative overflow-hidden rounded-2xl bg-[var(--glass)] border border-[var(--glass-border)] p-4">
-              <div className="flex items-center gap-3 mb-3">
+            <div className="relative overflow-hidden rounded-2xl bg-[var(--glass)] border border-[var(--glass-border)]">
+              <div className="flex items-center gap-3 p-4 border-b border-[var(--glass-border)]">
                 <MapPin className="w-5 h-5 text-[#00FFA3]" />
                 <span className="font-medium text-white">Nearby ATMs</span>
               </div>
-              <div className="space-y-2">
-                {["Chase ATM - 0.2 mi", "Bank of America - 0.5 mi", "Wells Fargo - 0.8 mi"].map((atm, i) => (
-                  <div key={i} className="flex items-center justify-between py-2 border-b border-[var(--glass-border)] last:border-0">
-                    <span className="text-sm text-muted-foreground">{atm}</span>
-                    <button className="text-xs text-[#00FFA3] font-medium">Directions</button>
-                  </div>
+              <div className="divide-y divide-[var(--glass-border)]">
+                {nearbyATMs.map((atm, i) => (
+                  <button 
+                    key={i} 
+                    className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
+                  >
+                    <div className="text-left">
+                      <p className="font-medium text-white">{atm.name}</p>
+                      <p className="text-sm text-muted-foreground">{atm.address}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">{atm.distance}</span>
+                      <div className="w-8 h-8 rounded-full bg-[#00FFA3]/10 flex items-center justify-center">
+                        <Navigation className="w-4 h-4 text-[#00FFA3]" />
+                      </div>
+                    </div>
+                  </button>
                 ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Bank Account Preview */}
+          {method === "bank" && (
+            <div className="p-4 rounded-2xl bg-[var(--glass)] border border-[var(--glass-border)]">
+              <div className="flex items-center gap-3 mb-3">
+                <Building2 className="w-5 h-5 text-[#00FFA3]" />
+                <span className="font-medium text-white">Linked Bank</span>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
+                <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                  <span className="font-bold text-blue-400">C</span>
+                </div>
+                <div>
+                  <p className="font-medium text-white">Chase Checking</p>
+                  <p className="text-sm text-muted-foreground">****4521</p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Card Preview */}
+          {method === "card" && (
+            <div className="p-4 rounded-2xl bg-[var(--glass)] border border-[var(--glass-border)]">
+              <div className="flex items-center gap-3 mb-3">
+                <CreditCard className="w-5 h-5 text-[#00FFA3]" />
+                <span className="font-medium text-white">Linked Card</span>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00FFA3] to-[#00cc82] flex items-center justify-center">
+                  <span className="font-bold text-black">M</span>
+                </div>
+                <div>
+                  <p className="font-medium text-white">MinorMint Debit</p>
+                  <p className="text-sm text-muted-foreground">****7891</p>
+                </div>
               </div>
             </div>
           )}
         </div>
         
         {/* Footer */}
-        <div className="p-4 border-t border-[var(--glass-border)]">
+        <div className="p-4 border-t border-[var(--glass-border)] space-y-3">
+          <div className="flex items-center gap-2 justify-center text-xs text-muted-foreground">
+            <Shield className="w-3 h-3 text-[#00FFA3]" />
+            <span>AI Guardian will verify this transaction</span>
+          </div>
+          
           <button
-            disabled={!amount || !method}
-            className="w-full py-4 rounded-2xl bg-[#00FFA3] text-black font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[var(--neon-glow)] transition-all active:scale-[0.98]"
+            onClick={handleCashOut}
+            disabled={!amount || !method || isProcessing}
+            className="w-full py-4 rounded-2xl bg-[#00FFA3] text-black font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_30px_rgba(0,255,163,0.5)] transition-all active:scale-[0.98] flex items-center justify-center gap-2"
           >
-            Continue
+            {isProcessing ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Processing...</span>
+              </>
+            ) : (
+              "Continue"
+            )}
           </button>
         </div>
       </div>

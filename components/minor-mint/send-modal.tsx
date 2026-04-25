@@ -1,17 +1,55 @@
 "use client"
 
 import { useState } from "react"
-import { X, QrCode, User, ArrowRight, Scan, ChevronDown } from "lucide-react"
+import { X, QrCode, User, Scan, ChevronDown, Shield, Loader2 } from "lucide-react"
 
 interface SendModalProps {
   isOpen: boolean
   onClose: () => void
+  onSuccess: (details: { amount: string; recipient: string }) => void
 }
 
-export function SendModal({ isOpen, onClose }: SendModalProps) {
+const recentContacts = [
+  { name: "Alex", avatar: "A", gradient: "from-pink-500 to-purple-500" },
+  { name: "Jordan", avatar: "J", gradient: "from-blue-500 to-cyan-500" },
+  { name: "Sam", avatar: "S", gradient: "from-orange-500 to-yellow-500" },
+  { name: "Taylor", avatar: "T", gradient: "from-green-500 to-emerald-500" },
+]
+
+export function SendModal({ isOpen, onClose, onSuccess }: SendModalProps) {
   const [amount, setAmount] = useState("")
   const [recipient, setRecipient] = useState("")
   const [showScanner, setShowScanner] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [scanLine, setScanLine] = useState(0)
+
+  // Animate scan line
+  useState(() => {
+    if (showScanner) {
+      const interval = setInterval(() => {
+        setScanLine((prev) => (prev >= 100 ? 0 : prev + 2))
+      }, 30)
+      return () => clearInterval(interval)
+    }
+  })
+
+  const handleSend = async () => {
+    if (!amount || !recipient) return
+    
+    setIsProcessing(true)
+    
+    // Simulate AI Guardian verification
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+    
+    setIsProcessing(false)
+    onSuccess({ amount, recipient })
+    setAmount("")
+    setRecipient("")
+  }
+
+  const handleQuickSelect = (contact: typeof recentContacts[0]) => {
+    setRecipient(contact.name)
+  }
 
   if (!isOpen) return null
 
@@ -22,7 +60,9 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
         <div className="flex items-center justify-between p-4 border-b border-[var(--glass-border)]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-[#00FFA3]/10 border border-[#00FFA3]/20 flex items-center justify-center">
-              <ArrowRight className="w-5 h-5 text-[#00FFA3] rotate-[-45deg]" />
+              <svg className="w-5 h-5 text-[#00FFA3] -rotate-45" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
             </div>
             <h3 className="font-semibold text-white text-lg">Send Funds</h3>
           </div>
@@ -50,14 +90,15 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
                     <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-[#00FFA3]" />
                     
                     {/* Scanning line */}
-                    <div className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#00FFA3] to-transparent animate-pulse" 
-                      style={{ top: '50%', animation: 'scan 2s ease-in-out infinite' }}
+                    <div 
+                      className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#00FFA3] to-transparent"
+                      style={{ 
+                        top: `${scanLine}%`,
+                        boxShadow: "0 0 15px #00FFA3"
+                      }}
                     />
                   </div>
                 </div>
-                
-                {/* Camera preview placeholder */}
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/60" />
                 
                 {/* Grid overlay */}
                 <div className="absolute inset-0 opacity-10">
@@ -66,7 +107,16 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
                     backgroundSize: '20px 20px'
                   }} />
                 </div>
+                
+                {/* Sample QR Code */}
+                <div className="absolute inset-0 flex items-center justify-center opacity-20">
+                  <QrCode className="w-32 h-32 text-white" />
+                </div>
               </div>
+              
+              <p className="text-center text-sm text-muted-foreground">
+                Point your camera at a QR code to scan
+              </p>
               
               <button 
                 onClick={() => setShowScanner(false)}
@@ -82,7 +132,7 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
                 onClick={() => setShowScanner(true)}
                 className="w-full py-4 rounded-2xl bg-[var(--glass)] border border-[var(--glass-border)] border-dashed flex items-center justify-center gap-3 hover:border-[#00FFA3]/50 hover:bg-[#00FFA3]/5 transition-all group"
               >
-                <div className="w-12 h-12 rounded-xl bg-[#00FFA3]/10 flex items-center justify-center group-hover:shadow-[var(--neon-glow)] transition-shadow">
+                <div className="w-12 h-12 rounded-xl bg-[#00FFA3]/10 flex items-center justify-center group-hover:shadow-[0_0_20px_rgba(0,255,163,0.3)] transition-shadow">
                   <QrCode className="w-6 h-6 text-[#00FFA3]" />
                 </div>
                 <div className="text-left">
@@ -127,26 +177,53 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
                   </div>
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-[var(--glass-border)]">
                     <span className="text-sm text-muted-foreground">Available: $700.00</span>
-                    <button className="text-sm text-[#00FFA3] font-medium">Max</button>
+                    <button 
+                      onClick={() => setAmount("700")}
+                      className="text-sm text-[#00FFA3] font-medium"
+                    >
+                      Max
+                    </button>
                   </div>
                 </div>
+              </div>
+              
+              {/* Quick Amounts */}
+              <div className="flex gap-2">
+                {["10", "25", "50", "100"].map((val) => (
+                  <button
+                    key={val}
+                    onClick={() => setAmount(val)}
+                    className={`flex-1 py-2 rounded-xl border transition-all ${
+                      amount === val
+                        ? "bg-[#00FFA3]/10 border-[#00FFA3]/50 text-[#00FFA3]"
+                        : "bg-[var(--glass)] border-[var(--glass-border)] text-white hover:border-white/20"
+                    }`}
+                  >
+                    ${val}
+                  </button>
+                ))}
               </div>
               
               {/* Recent Contacts */}
               <div className="space-y-3">
                 <p className="text-sm font-medium text-muted-foreground">Recent</p>
                 <div className="flex gap-4 overflow-x-auto pb-2">
-                  {['Alex', 'Jordan', 'Sam', 'Taylor'].map((name, i) => (
-                    <button key={name} className="flex flex-col items-center gap-2 min-w-[60px]">
-                      <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${
-                        i === 0 ? 'from-pink-500 to-purple-500' :
-                        i === 1 ? 'from-blue-500 to-cyan-500' :
-                        i === 2 ? 'from-orange-500 to-yellow-500' :
-                        'from-green-500 to-emerald-500'
-                      } flex items-center justify-center text-white font-semibold`}>
-                        {name[0]}
+                  {recentContacts.map((contact) => (
+                    <button 
+                      key={contact.name} 
+                      onClick={() => handleQuickSelect(contact)}
+                      className={`flex flex-col items-center gap-2 min-w-[60px] transition-all ${
+                        recipient === contact.name ? "scale-110" : ""
+                      }`}
+                    >
+                      <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${contact.gradient} flex items-center justify-center text-white font-semibold ${
+                        recipient === contact.name ? "ring-2 ring-[#00FFA3] ring-offset-2 ring-offset-black" : ""
+                      }`}>
+                        {contact.avatar}
                       </div>
-                      <span className="text-xs text-muted-foreground">{name}</span>
+                      <span className={`text-xs ${recipient === contact.name ? "text-[#00FFA3]" : "text-muted-foreground"}`}>
+                        {contact.name}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -157,23 +234,30 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
         
         {/* Footer */}
         {!showScanner && (
-          <div className="p-4 border-t border-[var(--glass-border)]">
+          <div className="p-4 border-t border-[var(--glass-border)] space-y-3">
+            {/* AI Guardian notice */}
+            <div className="flex items-center gap-2 justify-center text-xs text-muted-foreground">
+              <Shield className="w-3 h-3 text-[#00FFA3]" />
+              <span>AI Guardian will verify this transaction</span>
+            </div>
+            
             <button
-              disabled={!amount || !recipient}
-              className="w-full py-4 rounded-2xl bg-[#00FFA3] text-black font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[var(--neon-glow)] transition-all active:scale-[0.98]"
+              onClick={handleSend}
+              disabled={!amount || !recipient || isProcessing}
+              className="w-full py-4 rounded-2xl bg-[#00FFA3] text-black font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_30px_rgba(0,255,163,0.5)] transition-all active:scale-[0.98] flex items-center justify-center gap-2"
             >
-              Review Send
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Verifying...</span>
+                </>
+              ) : (
+                "Review Send"
+              )}
             </button>
           </div>
         )}
       </div>
-      
-      <style jsx>{`
-        @keyframes scan {
-          0%, 100% { transform: translateY(-40px); }
-          50% { transform: translateY(40px); }
-        }
-      `}</style>
     </div>
   )
 }

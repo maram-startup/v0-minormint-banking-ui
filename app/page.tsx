@@ -10,6 +10,21 @@ import { AIGuardian } from "@/components/minor-mint/ai-guardian"
 import { SendModal } from "@/components/minor-mint/send-modal"
 import { SwapModal } from "@/components/minor-mint/swap-modal"
 import { CashOutModal } from "@/components/minor-mint/cash-out-modal"
+import { SuccessModal } from "@/components/minor-mint/success-modal"
+import { CardsView } from "@/components/minor-mint/cards-view"
+import { InvestView } from "@/components/minor-mint/invest-view"
+import { ProfileView } from "@/components/minor-mint/profile-view"
+import { NotificationsModal } from "@/components/minor-mint/notifications-modal"
+
+type SuccessType = "send" | "swap" | "cashout"
+
+interface SuccessDetails {
+  amount?: string
+  recipient?: string
+  from?: string
+  to?: string
+  method?: string
+}
 
 export default function MinorMintApp() {
   const [activeTab, setActiveTab] = useState("home")
@@ -17,6 +32,56 @@ export default function MinorMintApp() {
   const [showSendModal, setShowSendModal] = useState(false)
   const [showSwapModal, setShowSwapModal] = useState(false)
   const [showCashOutModal, setShowCashOutModal] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
+  
+  // Success modal state
+  const [showSuccess, setShowSuccess] = useState(false)
+  const [successType, setSuccessType] = useState<SuccessType>("send")
+  const [successDetails, setSuccessDetails] = useState<SuccessDetails>({})
+
+  const handleSendSuccess = (details: { amount: string; recipient: string }) => {
+    setShowSendModal(false)
+    setSuccessType("send")
+    setSuccessDetails(details)
+    setShowSuccess(true)
+  }
+
+  const handleSwapSuccess = (details: { from: string; to: string }) => {
+    setShowSwapModal(false)
+    setSuccessType("swap")
+    setSuccessDetails(details)
+    setShowSuccess(true)
+  }
+
+  const handleCashOutSuccess = (details: { amount: string; method: string }) => {
+    setShowCashOutModal(false)
+    setSuccessType("cashout")
+    setSuccessDetails(details)
+    setShowSuccess(true)
+  }
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case "cards":
+        return <CardsView />
+      case "invest":
+        return <InvestView />
+      case "profile":
+        return <ProfileView onShowNotifications={() => setShowNotifications(true)} />
+      default:
+        return (
+          <>
+            <BalanceCard />
+            <ActionButtons 
+              onSendClick={() => setShowSendModal(true)}
+              onSwapClick={() => setShowSwapModal(true)}
+              onCashOutClick={() => setShowCashOutModal(true)}
+            />
+            <Transactions />
+          </>
+        )
+    }
+  }
 
   return (
     <main className="min-h-screen bg-black text-white max-w-md mx-auto relative overflow-hidden">
@@ -28,21 +93,10 @@ export default function MinorMintApp() {
       
       {/* Content */}
       <div className="relative z-10 pb-24">
-        <Header />
+        <Header onNotificationsClick={() => setShowNotifications(true)} />
         
         <div className="px-4 space-y-6 py-4">
-          {/* Balance Card */}
-          <BalanceCard />
-          
-          {/* Action Buttons */}
-          <ActionButtons 
-            onSendClick={() => setShowSendModal(true)}
-            onSwapClick={() => setShowSwapModal(true)}
-            onCashOutClick={() => setShowCashOutModal(true)}
-          />
-          
-          {/* Transactions */}
-          <Transactions />
+          {renderContent()}
         </div>
       </div>
       
@@ -55,9 +109,31 @@ export default function MinorMintApp() {
       
       {/* Modals */}
       <AIGuardian isOpen={showAIGuardian} onClose={() => setShowAIGuardian(false)} />
-      <SendModal isOpen={showSendModal} onClose={() => setShowSendModal(false)} />
-      <SwapModal isOpen={showSwapModal} onClose={() => setShowSwapModal(false)} />
-      <CashOutModal isOpen={showCashOutModal} onClose={() => setShowCashOutModal(false)} />
+      <SendModal 
+        isOpen={showSendModal} 
+        onClose={() => setShowSendModal(false)} 
+        onSuccess={handleSendSuccess}
+      />
+      <SwapModal 
+        isOpen={showSwapModal} 
+        onClose={() => setShowSwapModal(false)} 
+        onSuccess={handleSwapSuccess}
+      />
+      <CashOutModal 
+        isOpen={showCashOutModal} 
+        onClose={() => setShowCashOutModal(false)} 
+        onSuccess={handleCashOutSuccess}
+      />
+      <NotificationsModal 
+        isOpen={showNotifications} 
+        onClose={() => setShowNotifications(false)} 
+      />
+      <SuccessModal 
+        isOpen={showSuccess} 
+        onClose={() => setShowSuccess(false)}
+        type={successType}
+        details={successDetails}
+      />
     </main>
   )
 }
