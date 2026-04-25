@@ -1,3 +1,9 @@
+## 🛠 Core Architecture
+This project is built using a modular approach. The repository you are currently viewing contains the **Frontend & UI**. 
+
+The **AI Logic & Backend Shield** (powered by Gemini 1.5 Flash) is hosted in a separate repository:
+👉 [MinorMint AI Shield Repository](https://github.com/maram-startup/MinorMint-AI-Shield/tree/main)
+
 # 🛡️ MinorMint-AI-Shield
 An AI-powered smart vault for teenagers using Google Gemini and Circle USDC on Polygon.
 
