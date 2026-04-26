@@ -4,7 +4,7 @@ This project is built using a modular approach. The repository you are currently
 The **AI Logic & Backend Shield** (powered by Gemini 1.5 Flash) is hosted in a separate repository:
 👉 [MinorMint AI Shield Repository](https://github.com/maram-startup/MinorMint-AI-Shield/tree/main)
  
-Important: This project was developed as a solo submission by a high school student within a very tight timeframe, balancing development with national final exams.
+Important: This project was developed as a solo submission by a high school student within a very tight timeframe, balancing development with  exams.
 On Tech Stack: While the current demo utilizes Polygon to showcase the cross-chain interoperability envisioned for MinorMint, the architecture is designed for a full transition to Circle's Arc.
 On Demo: Some flows are currently simulated (hardcoded) to demonstrate the Gemini-powered Intent Analysis, which is the core innovation of this project.
 Future iterations will focus on full mainnet integration and expanding the agentic capabilities
