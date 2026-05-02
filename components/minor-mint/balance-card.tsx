@@ -1,8 +1,29 @@
 "use client"
 
-import { Lock, Droplets, Shield } from "lucide-react"
+import { Lock, Droplets, Shield, Zap } from "lucide-react"
+import { useWallet } from "@/lib/wallet-store"
 
-export function BalanceCard() {
+interface BalanceCardProps {
+  onLegacyTransfer?: () => void
+}
+
+export function BalanceCard({ onLegacyTransfer }: BalanceCardProps) {
+  const { balance, vaultBalance, gasFeesSaved, userProfile } = useWallet()
+  const totalBalance = balance + vaultBalance
+  
+  const isAdult = userProfile && !userProfile.isMinor
+
+  // Format balance parts
+  const formatBalance = (amount: number) => {
+    const formatted = amount.toFixed(2)
+    const [dollars, cents] = formatted.split(".")
+    return { dollars, cents }
+  }
+
+  const total = formatBalance(totalBalance)
+  const liquid = formatBalance(balance)
+  const vault = formatBalance(vaultBalance)
+
   return (
     <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0a0a0a] to-[#111111] border border-[var(--glass-border)] p-6">
       {/* Glow effect */}
@@ -23,12 +44,20 @@ export function BalanceCard() {
       </div>
       
       {/* Main Balance */}
-      <div className="mb-8">
+      <div className="mb-6">
         <div className="flex items-baseline gap-1">
-          <span className="text-4xl font-bold tracking-tight text-white">$1,000</span>
-          <span className="text-xl font-medium text-muted-foreground">.00</span>
+          <span className="text-4xl font-bold tracking-tight text-white">${total.dollars}</span>
+          <span className="text-xl font-medium text-muted-foreground">.{total.cents}</span>
         </div>
         <p className="text-sm text-muted-foreground mt-1">Total Assets</p>
+      </div>
+
+      {/* Gas Fees Saved Counter */}
+      <div className="flex items-center gap-2 mb-6 px-3 py-2 rounded-full bg-[#00FFA3]/5 border border-[#00FFA3]/10 w-fit">
+        <Zap className="w-4 h-4 text-[#00FFA3]" />
+        <span className="text-xs font-mono text-[#00FFA3]">
+          ${gasFeesSaved.toFixed(2)} Gas Fees Saved
+        </span>
       </div>
       
       {/* Split Assets */}
@@ -39,7 +68,8 @@ export function BalanceCard() {
             <Droplets className="w-4 h-4 text-[#00FFA3]" />
             <span className="text-xs font-medium text-muted-foreground">Liquid</span>
           </div>
-          <span className="text-xl font-semibold text-white">$700</span>
+          <span className="text-xl font-semibold text-white">${liquid.dollars}</span>
+          <span className="text-sm text-muted-foreground">.{liquid.cents}</span>
           <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-[#00FFA3] to-[#00FFA3]/30" />
         </div>
         
@@ -50,7 +80,8 @@ export function BalanceCard() {
             <span className="text-xs font-medium text-muted-foreground">Vault</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xl font-semibold text-white">$300</span>
+            <span className="text-xl font-semibold text-white">${vault.dollars}</span>
+            <span className="text-sm text-muted-foreground">.{vault.cents}</span>
             <div className="w-4 h-4 rounded-full bg-[#00FFA3]/20 flex items-center justify-center">
               <Lock className="w-2.5 h-2.5 text-[#00FFA3]" />
             </div>
@@ -58,6 +89,17 @@ export function BalanceCard() {
           <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-[#00FFA3]/30 to-[#00FFA3]" />
         </div>
       </div>
+
+      {/* 18+ Legacy Transfer Button */}
+      {isAdult && totalBalance > 0 && onLegacyTransfer && (
+        <button
+          onClick={onLegacyTransfer}
+          className="w-full mt-4 py-3 rounded-2xl bg-gradient-to-r from-[#FFD700]/20 to-[#FFA500]/20 border border-[#FFD700]/30 text-[#FFD700] font-medium text-sm hover:from-[#FFD700]/30 hover:to-[#FFA500]/30 transition-all flex items-center justify-center gap-2"
+        >
+          <span>Unlock Adult Banking Features</span>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-[#FFD700]/20">18+</span>
+        </button>
+      )}
     </div>
   )
 }

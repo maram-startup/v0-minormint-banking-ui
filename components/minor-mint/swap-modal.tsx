@@ -1,32 +1,39 @@
 "use client"
 
 import { useState } from "react"
-import { X, ArrowDownUp, ChevronDown, Sparkles, Info, Loader2, Shield } from "lucide-react"
+import { X, ArrowDownUp, ChevronDown, Sparkles, Info, Loader2, Shield, AlertCircle } from "lucide-react"
+import { useWallet } from "@/lib/wallet-store"
 
 interface SwapModalProps {
   isOpen: boolean
   onClose: () => void
-  onSuccess: (details: { from: string; to: string }) => void
+  onSuccess: (details: { from: string; to: string; amount: string }) => void
 }
 
 const tokens = {
-  USDC: { symbol: "USDC", name: "USD Coin", balance: 500, price: 1, color: "#2775CA" },
-  SOL: { symbol: "SOL", name: "Solana", balance: 2.5, price: 150, color: "#9945FF" },
-  ETH: { symbol: "ETH", name: "Ethereum", balance: 0.15, price: 3200, color: "#627EEA" },
+  USD: { symbol: "USD", name: "US Dollar", price: 1, color: "#00FFA3" },
+  SOL: { symbol: "SOL", name: "Solana", price: 150, color: "#9945FF" },
+  ETH: { symbol: "ETH", name: "Ethereum", price: 3200, color: "#627EEA" },
+  BTC: { symbol: "BTC", name: "Bitcoin", price: 65000, color: "#F7931A" },
 }
 
 type TokenKey = keyof typeof tokens
 
 export function SwapModal({ isOpen, onClose, onSuccess }: SwapModalProps) {
-  const [fromAmount, setFromAmount] = useState("100")
-  const [fromToken, setFromToken] = useState<TokenKey>("USDC")
+  const { balance, swap: performSwap } = useWallet()
+  const [fromAmount, setFromAmount] = useState("")
+  const [fromToken, setFromToken] = useState<TokenKey>("USD")
   const [toToken, setToToken] = useState<TokenKey>("SOL")
   const [isProcessing, setIsProcessing] = useState(false)
   const [showFromTokens, setShowFromTokens] = useState(false)
   const [showToTokens, setShowToTokens] = useState(false)
+  const [error, setError] = useState("")
+
+  const fromAmountNum = parseFloat(fromAmount) || 0
+  const isInsufficientFunds = fromToken === "USD" && fromAmountNum > balance
 
   const calculateToAmount = () => {
-    const fromValue = parseFloat(fromAmount || "0") * tokens[fromToken].price
+    const fromValue = fromAmountNum * tokens[fromToken].price
     return (fromValue / tokens[toToken].price).toFixed(6)
   }
 
@@ -39,11 +46,21 @@ export function SwapModal({ isOpen, onClose, onSuccess }: SwapModalProps) {
   }
 
   const handleSwap = async () => {
+    if (isInsufficientFunds || !fromAmount || fromAmountNum <= 0) return
+
+    setError("")
     setIsProcessing(true)
     await new Promise((resolve) => setTimeout(resolve, 2500))
+    
+    const success = performSwap(fromAmountNum, fromToken, toToken)
     setIsProcessing(false)
-    onSuccess({ from: fromToken, to: toToken })
-    setFromAmount("100")
+
+    if (success) {
+      onSuccess({ from: fromToken, to: toToken, amount: fromAmount })
+      setFromAmount("")
+    } else {
+      setError("Swap failed. Please try again.")
+    }
   }
 
   const selectFromToken = (token: TokenKey) => {
@@ -60,6 +77,12 @@ export function SwapModal({ isOpen, onClose, onSuccess }: SwapModalProps) {
     }
     setToToken(token)
     setShowToTokens(false)
+  }
+
+  const handleClose = () => {
+    setFromAmount("")
+    setError("")
+    onClose()
   }
 
   if (!isOpen) return null
@@ -83,7 +106,7 @@ export function SwapModal({ isOpen, onClose, onSuccess }: SwapModalProps) {
             </div>
           </div>
           <button 
-            onClick={onClose}
+            onClick={handleClose}
             className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
           >
             <X className="w-4 h-4 text-white" />
@@ -92,12 +115,22 @@ export function SwapModal({ isOpen, onClose, onSuccess }: SwapModalProps) {
         
         {/* Content */}
         <div className="relative p-4 space-y-3">
+          {/* Error Message */}
+          {error && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
+              <AlertCircle className="w-4 h-4" />
+              <span className="text-sm">{error}</span>
+            </div>
+          )}
+
           {/* From Token */}
-          <div className="relative bg-black/40 backdrop-blur-sm rounded-2xl p-4 border border-white/5">
+          <div className={`relative bg-black/40 backdrop-blur-sm rounded-2xl p-4 border ${
+            isInsufficientFunds ? "border-red-500/50" : "border-white/5"
+          }`}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-muted-foreground">You pay</span>
               <span className="text-sm text-muted-foreground">
-                Balance: {tokens[fromToken].balance} {fromToken}
+                Balance: ${balance.toFixed(2)}
               </span>
             </div>
             <div className="flex items-center gap-3">
@@ -142,12 +175,20 @@ export function SwapModal({ isOpen, onClose, onSuccess }: SwapModalProps) {
                 )}
               </div>
             </div>
-            <button 
-              onClick={() => setFromAmount(tokens[fromToken].balance.toString())}
-              className="mt-2 text-xs text-[#00FFA3] font-medium hover:underline"
-            >
-              Use Max
-            </button>
+            <div className="flex items-center justify-between mt-2">
+              <button 
+                onClick={() => setFromAmount(balance.toFixed(2))}
+                className="text-xs text-[#00FFA3] font-medium hover:underline"
+              >
+                Use Max
+              </button>
+              {isInsufficientFunds && (
+                <span className="text-xs text-red-400 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  Insufficient funds
+                </span>
+              )}
+            </div>
           </div>
           
           {/* Swap Button */}
@@ -164,9 +205,6 @@ export function SwapModal({ isOpen, onClose, onSuccess }: SwapModalProps) {
           <div className="relative bg-black/40 backdrop-blur-sm rounded-2xl p-4 border border-white/5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-muted-foreground">You receive</span>
-              <span className="text-sm text-muted-foreground">
-                Balance: {tokens[toToken].balance} {toToken}
-              </span>
             </div>
             <div className="flex items-center gap-3">
               <div className="flex-1 text-3xl font-semibold text-white">
@@ -224,7 +262,7 @@ export function SwapModal({ isOpen, onClose, onSuccess }: SwapModalProps) {
                 <Info className="w-3 h-3" />
                 Network Fee
               </span>
-              <span className="text-white">~$0.02</span>
+              <span className="text-[#00FFA3]">$0.00 (Saved!)</span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Slippage</span>
@@ -242,7 +280,7 @@ export function SwapModal({ isOpen, onClose, onSuccess }: SwapModalProps) {
           
           <button 
             onClick={handleSwap}
-            disabled={isProcessing || !fromAmount}
+            disabled={isProcessing || !fromAmount || fromAmountNum <= 0 || isInsufficientFunds}
             className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#00FFA3] to-[#00cc82] text-black font-semibold text-lg hover:shadow-[0_0_30px_rgba(0,255,163,0.5)] transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isProcessing ? (

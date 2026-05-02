@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { X, QrCode, User, Scan, ChevronDown, Shield, Loader2 } from "lucide-react"
+import { X, QrCode, User, Scan, ChevronDown, Shield, Loader2, AlertCircle } from "lucide-react"
+import { useWallet } from "@/lib/wallet-store"
 
 interface SendModalProps {
   isOpen: boolean
@@ -17,10 +18,12 @@ const recentContacts = [
 ]
 
 export function SendModal({ isOpen, onClose, onSuccess }: SendModalProps) {
+  const { balance, send } = useWallet()
   const [amount, setAmount] = useState("")
   const [recipient, setRecipient] = useState("")
   const [showScanner, setShowScanner] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [error, setError] = useState("")
   const [scanLine, setScanLine] = useState(0)
 
   // Animate scan line
@@ -33,22 +36,41 @@ export function SendModal({ isOpen, onClose, onSuccess }: SendModalProps) {
     }
   })
 
+  const amountNum = parseFloat(amount) || 0
+  const isInsufficientFunds = amountNum > balance
+  const canSend = amount && recipient && amountNum > 0 && !isInsufficientFunds
+
   const handleSend = async () => {
-    if (!amount || !recipient) return
+    if (!canSend) return
     
+    setError("")
     setIsProcessing(true)
     
     // Simulate AI Guardian verification
     await new Promise((resolve) => setTimeout(resolve, 2000))
     
+    const success = send(amountNum, recipient)
+    
     setIsProcessing(false)
-    onSuccess({ amount, recipient })
-    setAmount("")
-    setRecipient("")
+    
+    if (success) {
+      onSuccess({ amount, recipient })
+      setAmount("")
+      setRecipient("")
+    } else {
+      setError("Transaction failed. Please try again.")
+    }
   }
 
   const handleQuickSelect = (contact: typeof recentContacts[0]) => {
     setRecipient(contact.name)
+  }
+
+  const handleClose = () => {
+    setAmount("")
+    setRecipient("")
+    setError("")
+    onClose()
   }
 
   if (!isOpen) return null
@@ -67,7 +89,7 @@ export function SendModal({ isOpen, onClose, onSuccess }: SendModalProps) {
             <h3 className="font-semibold text-white text-lg">Send Funds</h3>
           </div>
           <button 
-            onClick={onClose}
+            onClick={handleClose}
             className="w-8 h-8 rounded-full bg-[var(--glass)] flex items-center justify-center hover:bg-white/10 transition-colors"
           >
             <X className="w-4 h-4 text-muted-foreground" />
@@ -76,6 +98,14 @@ export function SendModal({ isOpen, onClose, onSuccess }: SendModalProps) {
         
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          {/* Error Message */}
+          {error && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
+              <AlertCircle className="w-4 h-4" />
+              <span className="text-sm">{error}</span>
+            </div>
+          )}
+
           {/* QR Scanner Section */}
           {showScanner ? (
             <div className="space-y-4">
@@ -160,7 +190,9 @@ export function SendModal({ isOpen, onClose, onSuccess }: SendModalProps) {
               {/* Amount Input */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-muted-foreground">Amount</label>
-                <div className="relative bg-[var(--glass)] border border-[var(--glass-border)] rounded-2xl p-4">
+                <div className={`relative bg-[var(--glass)] border rounded-2xl p-4 ${
+                  isInsufficientFunds ? "border-red-500/50" : "border-[var(--glass-border)]"
+                }`}>
                   <div className="flex items-center gap-2">
                     <span className="text-2xl text-muted-foreground">$</span>
                     <input
@@ -176,14 +208,22 @@ export function SendModal({ isOpen, onClose, onSuccess }: SendModalProps) {
                     </button>
                   </div>
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-[var(--glass-border)]">
-                    <span className="text-sm text-muted-foreground">Available: $700.00</span>
+                    <span className={`text-sm ${isInsufficientFunds ? "text-red-400" : "text-muted-foreground"}`}>
+                      Available: ${balance.toFixed(2)}
+                    </span>
                     <button 
-                      onClick={() => setAmount("700")}
+                      onClick={() => setAmount(balance.toFixed(2))}
                       className="text-sm text-[#00FFA3] font-medium"
                     >
                       Max
                     </button>
                   </div>
+                  {isInsufficientFunds && (
+                    <div className="flex items-center gap-1 mt-2 text-red-400 text-sm">
+                      <AlertCircle className="w-4 h-4" />
+                      <span>Insufficient funds</span>
+                    </div>
+                  )}
                 </div>
               </div>
               
@@ -193,9 +233,12 @@ export function SendModal({ isOpen, onClose, onSuccess }: SendModalProps) {
                   <button
                     key={val}
                     onClick={() => setAmount(val)}
+                    disabled={parseFloat(val) > balance}
                     className={`flex-1 py-2 rounded-xl border transition-all ${
                       amount === val
                         ? "bg-[#00FFA3]/10 border-[#00FFA3]/50 text-[#00FFA3]"
+                        : parseFloat(val) > balance
+                        ? "bg-[var(--glass)] border-[var(--glass-border)] text-muted-foreground/50 cursor-not-allowed"
                         : "bg-[var(--glass)] border-[var(--glass-border)] text-white hover:border-white/20"
                     }`}
                   >
@@ -243,7 +286,7 @@ export function SendModal({ isOpen, onClose, onSuccess }: SendModalProps) {
             
             <button
               onClick={handleSend}
-              disabled={!amount || !recipient || isProcessing}
+              disabled={!canSend || isProcessing}
               className="w-full py-4 rounded-2xl bg-[#00FFA3] text-black font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_30px_rgba(0,255,163,0.5)] transition-all active:scale-[0.98] flex items-center justify-center gap-2"
             >
               {isProcessing ? (
@@ -252,7 +295,7 @@ export function SendModal({ isOpen, onClose, onSuccess }: SendModalProps) {
                   <span>Verifying...</span>
                 </>
               ) : (
-                "Review Send"
+                `Send $${amountNum.toFixed(2)}`
               )}
             </button>
           </div>

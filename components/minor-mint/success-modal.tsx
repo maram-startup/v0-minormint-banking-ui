@@ -6,13 +6,14 @@ import { CheckCircle2, X, ArrowUpRight, Share2 } from "lucide-react"
 interface SuccessModalProps {
   isOpen: boolean
   onClose: () => void
-  type: "send" | "swap" | "cashout"
+  type: "send" | "swap" | "cashout" | "deposit"
   details?: {
     amount?: string
     recipient?: string
     from?: string
     to?: string
     method?: string
+    source?: string
   }
 }
 
@@ -31,13 +32,15 @@ export function SuccessModal({ isOpen, onClose, type, details }: SuccessModalPro
   const titles = {
     send: "Money Sent!",
     swap: "Swap Complete!",
-    cashout: "Withdrawal Initiated!"
+    cashout: "Withdrawal Initiated!",
+    deposit: "Funds Received!"
   }
 
   const messages = {
     send: `$${details?.amount || "0"} sent to ${details?.recipient || "recipient"}`,
-    swap: `Successfully swapped ${details?.from || "USDC"} to ${details?.to || "SOL"}`,
-    cashout: `$${details?.amount || "0"} withdrawal via ${details?.method || "Bank Transfer"}`
+    swap: `Successfully swapped ${details?.amount || ""} ${details?.from || "USD"} to ${details?.to || "SOL"}`,
+    cashout: `$${details?.amount || "0"} withdrawal via ${details?.method || "Bank Transfer"}`,
+    deposit: `$${details?.amount || "0"} added from ${details?.source || "deposit"}`
   }
 
   return (
@@ -45,15 +48,15 @@ export function SuccessModal({ isOpen, onClose, type, details }: SuccessModalPro
       {/* Confetti effect */}
       {showConfetti && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          {[...Array(20)].map((_, i) => (
+          {[...Array(30)].map((_, i) => (
             <div
               key={i}
-              className="absolute w-3 h-3 rounded-full animate-confetti"
+              className="absolute w-3 h-3 rounded-full"
               style={{
                 left: `${Math.random() * 100}%`,
-                backgroundColor: i % 2 === 0 ? "#00FFA3" : "#ffffff",
+                backgroundColor: i % 3 === 0 ? "#00FFA3" : i % 3 === 1 ? "#ffffff" : "#FFD700",
+                animation: `confetti ${1 + Math.random()}s ease-out forwards`,
                 animationDelay: `${Math.random() * 0.5}s`,
-                animationDuration: `${1 + Math.random()}s`
               }}
             />
           ))}
@@ -88,7 +91,7 @@ export function SuccessModal({ isOpen, onClose, type, details }: SuccessModalPro
           
           {/* Transaction ID */}
           <div className="mt-6 px-4 py-2 rounded-full bg-[var(--glass)] border border-[var(--glass-border)]">
-            <span className="text-xs font-mono text-muted-foreground">TX: 0x7f8a...3e2d</span>
+            <span className="text-xs font-mono text-muted-foreground">TX: {crypto.randomUUID().slice(0, 8)}...{crypto.randomUUID().slice(-4)}</span>
           </div>
           
           {/* AI Guardian Badge */}
@@ -124,9 +127,6 @@ export function SuccessModal({ isOpen, onClose, type, details }: SuccessModalPro
         @keyframes confetti {
           0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
           100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-        }
-        .animate-confetti {
-          animation: confetti linear forwards;
         }
       `}</style>
     </div>

@@ -4,15 +4,26 @@ import { useState } from "react"
 import { 
   User, Bell, Shield, Moon, HelpCircle, LogOut, ChevronRight, 
   Fingerprint, Languages, CreditCard, FileText, Star, Gift,
-  CheckCircle2, X
+  CheckCircle2, Lock, Trash2
 } from "lucide-react"
+import { useWallet } from "@/lib/wallet-store"
 
 interface ProfileViewProps {
   onShowNotifications: () => void
 }
 
 export function ProfileView({ onShowNotifications }: ProfileViewProps) {
+  const { userProfile, transactions, balance, vaultBalance, resetWallet } = useWallet()
   const [biometricEnabled, setBiometricEnabled] = useState(true)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
+
+  const initials = userProfile?.name
+    ? userProfile.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : "MM"
+
+  const memberSince = userProfile?.createdAt
+    ? new Date(userProfile.createdAt).getFullYear()
+    : new Date().getFullYear()
 
   const menuSections = [
     {
@@ -48,43 +59,56 @@ export function ProfileView({ onShowNotifications }: ProfileViewProps) {
     }
   ]
 
+  const handleReset = () => {
+    resetWallet()
+    setShowResetConfirm(false)
+  }
+
   return (
     <div className="space-y-6 pb-6">
       {/* Profile Header */}
       <div className="flex flex-col items-center text-center py-4">
         <div className="relative mb-3">
           <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#00FFA3] to-[#00cc82] flex items-center justify-center">
-            <span className="text-3xl font-bold text-black">AJ</span>
+            <span className="text-3xl font-bold text-black">{initials}</span>
           </div>
           <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[#00FFA3] border-4 border-black flex items-center justify-center">
             <CheckCircle2 className="w-4 h-4 text-black" />
           </div>
         </div>
-        <h2 className="text-xl font-bold text-white">Alex Johnson</h2>
-        <p className="text-sm text-muted-foreground">@alexj_mint</p>
+        <h2 className="text-xl font-bold text-white">{userProfile?.name || "MinorMint User"}</h2>
+        <p className="text-sm text-muted-foreground">@{userProfile?.username || "user"}</p>
         <div className="flex items-center gap-2 mt-2">
           <span className="px-3 py-1 rounded-full bg-[#00FFA3]/10 border border-[#00FFA3]/20 text-xs font-medium text-[#00FFA3]">
-            Teen Account
+            {userProfile?.isMinor ? "Teen Account" : "Adult Account"}
           </span>
-          <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-muted-foreground">
-            Member since 2024
-          </span>
+          {userProfile?.isMinor && (
+            <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-muted-foreground flex items-center gap-1">
+              <Lock className="w-3 h-3" />
+              Private Vault
+            </span>
+          )}
         </div>
+        <span className="mt-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-muted-foreground">
+          Member since {memberSince}
+        </span>
       </div>
       
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         <div className="p-3 rounded-2xl bg-[var(--glass)] border border-[var(--glass-border)] text-center">
-          <p className="text-lg font-bold text-white">47</p>
+          <p className="text-lg font-bold text-white">{transactions.length}</p>
           <p className="text-xs text-muted-foreground">Transactions</p>
         </div>
         <div className="p-3 rounded-2xl bg-[var(--glass)] border border-[var(--glass-border)] text-center">
-          <p className="text-lg font-bold text-[#00FFA3]">92%</p>
-          <p className="text-xs text-muted-foreground">AI Score</p>
+          <p className="text-lg font-bold text-[#00FFA3]">
+            {transactions.length === 0 ? "0%" : Math.min(Math.round((vaultBalance / (balance + vaultBalance || 1)) * 100), 100) + "%"}
+          </p>
+          <p className="text-xs text-muted-foreground">Saved</p>
         </div>
         <div className="p-3 rounded-2xl bg-[var(--glass)] border border-[var(--glass-border)] text-center">
-          <p className="text-lg font-bold text-white">3</p>
-          <p className="text-xs text-muted-foreground">Goals</p>
+          <p className="text-lg font-bold text-white">{userProfile?.age || "--"}</p>
+          <p className="text-xs text-muted-foreground">Age</p>
         </div>
       </div>
       
@@ -142,6 +166,23 @@ export function ProfileView({ onShowNotifications }: ProfileViewProps) {
           </div>
         </div>
       ))}
+
+      {/* Reset Wallet */}
+      <div className="space-y-2">
+        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-1">
+          Developer
+        </h3>
+        <button 
+          onClick={() => setShowResetConfirm(true)}
+          className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[var(--glass)] border border-[var(--glass-border)] hover:bg-white/5 transition-colors"
+        >
+          <div className="w-9 h-9 rounded-xl bg-yellow-500/10 flex items-center justify-center">
+            <Trash2 className="w-4 h-4 text-yellow-400" />
+          </div>
+          <span className="flex-1 text-left font-medium text-white">Reset Wallet (Demo)</span>
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+        </button>
+      </div>
       
       {/* Logout */}
       <button className="w-full flex items-center justify-center gap-2 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors">
@@ -153,6 +194,32 @@ export function ProfileView({ onShowNotifications }: ProfileViewProps) {
       <p className="text-center text-xs text-muted-foreground">
         MinorMint v1.0.0
       </p>
+
+      {/* Reset Confirmation Modal */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-[#0a0a0a] rounded-3xl border border-[var(--glass-border)] p-6">
+            <h3 className="text-xl font-bold text-white mb-2">Reset Wallet?</h3>
+            <p className="text-muted-foreground mb-6">
+              This will clear all your data including balance, transactions, and profile. This is for demo purposes only.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="flex-1 py-3 rounded-2xl bg-[var(--glass)] border border-[var(--glass-border)] text-white font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReset}
+                className="flex-1 py-3 rounded-2xl bg-red-500 text-white font-medium"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

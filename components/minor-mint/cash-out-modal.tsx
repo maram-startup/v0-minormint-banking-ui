@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { X, Landmark, MapPin, CreditCard, Banknote, Building2, Loader2, Shield, Navigation } from "lucide-react"
+import { X, Landmark, MapPin, CreditCard, Banknote, Building2, Loader2, Shield, Navigation, AlertCircle } from "lucide-react"
+import { useWallet } from "@/lib/wallet-store"
 
 interface CashOutModalProps {
   isOpen: boolean
@@ -22,21 +23,42 @@ const nearbyATMs = [
 ]
 
 export function CashOutModal({ isOpen, onClose, onSuccess }: CashOutModalProps) {
+  const { balance, cashOut: performCashOut } = useWallet()
   const [amount, setAmount] = useState("")
   const [method, setMethod] = useState<"atm" | "bank" | "card" | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [error, setError] = useState("")
+
+  const amountNum = parseFloat(amount) || 0
+  const isInsufficientFunds = amountNum > balance
+  const canCashOut = amount && method && amountNum > 0 && !isInsufficientFunds
 
   const handleCashOut = async () => {
-    if (!amount || !method) return
+    if (!canCashOut) return
     
+    setError("")
     setIsProcessing(true)
     await new Promise((resolve) => setTimeout(resolve, 2000))
-    setIsProcessing(false)
     
     const methodTitle = methods.find(m => m.id === method)?.title || ""
-    onSuccess({ amount, method: methodTitle })
+    const success = performCashOut(amountNum, methodTitle)
+    
+    setIsProcessing(false)
+    
+    if (success) {
+      onSuccess({ amount, method: methodTitle })
+      setAmount("")
+      setMethod(null)
+    } else {
+      setError("Cash out failed. Please try again.")
+    }
+  }
+
+  const handleClose = () => {
     setAmount("")
     setMethod(null)
+    setError("")
+    onClose()
   }
 
   if (!isOpen) return null
@@ -53,7 +75,7 @@ export function CashOutModal({ isOpen, onClose, onSuccess }: CashOutModalProps) 
             <h3 className="font-semibold text-white text-lg">Cash Out</h3>
           </div>
           <button 
-            onClick={onClose}
+            onClick={handleClose}
             className="w-8 h-8 rounded-full bg-[var(--glass)] flex items-center justify-center hover:bg-white/10 transition-colors"
           >
             <X className="w-4 h-4 text-muted-foreground" />
@@ -62,6 +84,14 @@ export function CashOutModal({ isOpen, onClose, onSuccess }: CashOutModalProps) 
         
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          {/* Error Message */}
+          {error && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
+              <AlertCircle className="w-4 h-4" />
+              <span className="text-sm">{error}</span>
+            </div>
+          )}
+
           {/* Amount Input */}
           <div className="text-center py-6">
             <p className="text-sm text-muted-foreground mb-2">Amount to withdraw</p>
@@ -75,7 +105,15 @@ export function CashOutModal({ isOpen, onClose, onSuccess }: CashOutModalProps) 
                 className="bg-transparent text-5xl font-bold text-white placeholder:text-muted-foreground focus:outline-none w-40 text-center"
               />
             </div>
-            <p className="text-sm text-muted-foreground mt-2">Available: $700.00</p>
+            <p className={`text-sm mt-2 ${isInsufficientFunds ? "text-red-400" : "text-muted-foreground"}`}>
+              Available: ${balance.toFixed(2)}
+            </p>
+            {isInsufficientFunds && (
+              <p className="text-sm text-red-400 flex items-center justify-center gap-1 mt-1">
+                <AlertCircle className="w-4 h-4" />
+                Insufficient funds
+              </p>
+            )}
             
             {/* Quick amounts */}
             <div className="flex justify-center gap-2 mt-4">
@@ -83,9 +121,12 @@ export function CashOutModal({ isOpen, onClose, onSuccess }: CashOutModalProps) 
                 <button
                   key={val}
                   onClick={() => setAmount(val.toString())}
+                  disabled={val > balance}
                   className={`px-4 py-2 rounded-full border text-sm font-medium transition-colors ${
                     amount === val.toString()
                       ? "bg-[#00FFA3]/10 border-[#00FFA3]/50 text-[#00FFA3]"
+                      : val > balance
+                      ? "bg-[var(--glass)] border-[var(--glass-border)] text-muted-foreground/50 cursor-not-allowed"
                       : "bg-[var(--glass)] border-[var(--glass-border)] text-white hover:border-white/20"
                   }`}
                 >
@@ -203,7 +244,7 @@ export function CashOutModal({ isOpen, onClose, onSuccess }: CashOutModalProps) 
           
           <button
             onClick={handleCashOut}
-            disabled={!amount || !method || isProcessing}
+            disabled={!canCashOut || isProcessing}
             className="w-full py-4 rounded-2xl bg-[#00FFA3] text-black font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_30px_rgba(0,255,163,0.5)] transition-all active:scale-[0.98] flex items-center justify-center gap-2"
           >
             {isProcessing ? (
@@ -212,7 +253,7 @@ export function CashOutModal({ isOpen, onClose, onSuccess }: CashOutModalProps) 
                 <span>Processing...</span>
               </>
             ) : (
-              "Continue"
+              `Withdraw $${amountNum.toFixed(2)}`
             )}
           </button>
         </div>
