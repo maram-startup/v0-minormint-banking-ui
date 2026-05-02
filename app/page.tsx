@@ -18,7 +18,8 @@ import { ProfileView } from "@/components/minor-mint/profile-view"
 import { NotificationsModal } from "@/components/minor-mint/notifications-modal"
 import { OnboardingModal } from "@/components/minor-mint/onboarding-modal"
 import { LegacyTransferModal } from "@/components/minor-mint/legacy-transfer-modal"
-import { WalletProvider, useWallet } from "@/lib/wallet-store"
+import { PinLockScreen } from "@/components/minor-mint/pin-lock-screen"
+import { WalletProvider, useWallet, UserProfile, SecurityData } from "@/lib/wallet-store"
 
 type SuccessType = "send" | "swap" | "cashout" | "deposit"
 
@@ -32,7 +33,18 @@ interface SuccessDetails {
 }
 
 function MinorMintContent() {
-  const { isOnboarded, completeOnboarding, deposit, balance } = useWallet()
+  const { 
+    isOnboarded, 
+    isLocked,
+    completeOnboarding, 
+    deposit, 
+    balance,
+    gasCredit,
+    userProfile,
+    security,
+    unlockWallet,
+    resetWallet
+  } = useWallet()
   
   const [activeTab, setActiveTab] = useState("home")
   const [showAIGuardian, setShowAIGuardian] = useState(false)
@@ -77,8 +89,20 @@ function MinorMintContent() {
     setShowSuccess(true)
   }
 
-  const handleOnboardingComplete = (name: string, username: string, age: number) => {
-    completeOnboarding(name, username, age)
+  const handleOnboardingComplete = (profile: UserProfile, securityData: SecurityData) => {
+    completeOnboarding(profile, securityData)
+  }
+
+  // Show PIN lock screen for returning users
+  if (isOnboarded && isLocked) {
+    return (
+      <PinLockScreen
+        onUnlock={unlockWallet}
+        onReset={resetWallet}
+        biometricsEnabled={security?.biometricsEnabled}
+        username={userProfile?.username}
+      />
+    )
   }
 
   const renderContent = () => {
@@ -92,7 +116,10 @@ function MinorMintContent() {
       default:
         return (
           <>
-            <BalanceCard onLegacyTransfer={() => setShowLegacyTransfer(true)} />
+            <BalanceCard 
+              onLegacyTransfer={() => setShowLegacyTransfer(true)} 
+              gasCredit={gasCredit}
+            />
             <ActionButtons 
               onSendClick={() => setShowSendModal(true)}
               onSwapClick={() => setShowSwapModal(true)}

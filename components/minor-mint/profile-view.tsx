@@ -13,9 +13,11 @@ interface ProfileViewProps {
 }
 
 export function ProfileView({ onShowNotifications }: ProfileViewProps) {
-  const { userProfile, transactions, balance, vaultBalance, resetWallet } = useWallet()
-  const [biometricEnabled, setBiometricEnabled] = useState(true)
+  const { userProfile, transactions, balance, vaultBalance, resetWallet, security, lockWallet } = useWallet()
   const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [showSeedPhrase, setShowSeedPhrase] = useState(false)
+  
+  const biometricEnabled = security?.biometricsEnabled ?? false
 
   const initials = userProfile?.name
     ? userProfile.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -126,7 +128,7 @@ export function ProfileView({ onShowNotifications }: ProfileViewProps) {
                   if (item.label === "Notifications") {
                     onShowNotifications()
                   } else if (item.action === "toggle") {
-                    setBiometricEnabled(!biometricEnabled)
+                    // Biometrics are set during onboarding
                   }
                 }}
                 className="w-full flex items-center gap-3 p-4 hover:bg-white/5 transition-colors"
@@ -167,7 +169,42 @@ export function ProfileView({ onShowNotifications }: ProfileViewProps) {
         </div>
       ))}
 
-      {/* Reset Wallet */}
+      {/* Security & Recovery */}
+      <div className="space-y-2">
+        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-1">
+          Security & Recovery
+        </h3>
+        <div className="rounded-2xl bg-[var(--glass)] border border-[var(--glass-border)] overflow-hidden">
+          <button 
+            onClick={() => setShowSeedPhrase(!showSeedPhrase)}
+            className="w-full flex items-center gap-3 p-4 hover:bg-white/5 transition-colors"
+          >
+            <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
+              <Shield className="w-4 h-4 text-amber-400" />
+            </div>
+            <span className="flex-1 text-left font-medium text-white">View Recovery Phrase</span>
+            <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${showSeedPhrase ? "rotate-90" : ""}`} />
+          </button>
+          
+          {showSeedPhrase && security?.seedPhrase && (
+            <div className="p-4 border-t border-[var(--glass-border)]">
+              <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 mb-3">
+                <p className="text-xs text-amber-400">Keep this phrase secret. Anyone with it can access your wallet.</p>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {security.seedPhrase.map((word, i) => (
+                  <div key={i} className="flex items-center gap-1 p-2 rounded-lg bg-black/30 text-xs">
+                    <span className="text-muted-foreground w-4">{i + 1}.</span>
+                    <span className="text-white font-mono">{word}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Developer Options */}
       <div className="space-y-2">
         <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-1">
           Developer
@@ -185,9 +222,12 @@ export function ProfileView({ onShowNotifications }: ProfileViewProps) {
       </div>
       
       {/* Logout */}
-      <button className="w-full flex items-center justify-center gap-2 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors">
+      <button 
+        onClick={() => lockWallet()}
+        className="w-full flex items-center justify-center gap-2 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
+      >
         <LogOut className="w-5 h-5" />
-        <span className="font-medium">Sign Out</span>
+        <span className="font-medium">Lock Wallet</span>
       </button>
       
       {/* Version */}

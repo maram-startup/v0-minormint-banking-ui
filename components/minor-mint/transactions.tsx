@@ -1,30 +1,33 @@
 "use client"
 
-import { ArrowUpRight, ArrowDownLeft, RefreshCw, Landmark, Wallet, Gift } from "lucide-react"
+import { ArrowUpRight, ArrowDownLeft, RefreshCw, Landmark, Wallet, Gift, Sparkles } from "lucide-react"
 import { useWallet, Transaction } from "@/lib/wallet-store"
 
-const iconMap = {
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   deposit: ArrowDownLeft,
   send: ArrowUpRight,
   swap: RefreshCw,
   cashout: Landmark,
   allowance: Gift,
+  "gas-gift": Sparkles,
 }
 
-const iconBgMap = {
+const iconBgMap: Record<string, string> = {
   deposit: "bg-[#00FFA3]/10",
   send: "bg-red-500/10",
   swap: "bg-purple-500/10",
   cashout: "bg-orange-500/10",
   allowance: "bg-blue-500/10",
+  "gas-gift": "bg-amber-500/10",
 }
 
-const iconColorMap = {
+const iconColorMap: Record<string, string> = {
   deposit: "text-[#00FFA3]",
   send: "text-red-400",
   swap: "text-purple-400",
   cashout: "text-orange-400",
   allowance: "text-blue-400",
+  "gas-gift": "text-amber-400",
 }
 
 function formatTimeAgo(date: Date): string {

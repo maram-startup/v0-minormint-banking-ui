@@ -1,13 +1,14 @@
 "use client"
 
-import { Lock, Droplets, Shield, Zap } from "lucide-react"
+import { Lock, Droplets, Shield, Zap, Sparkles } from "lucide-react"
 import { useWallet } from "@/lib/wallet-store"
 
 interface BalanceCardProps {
   onLegacyTransfer?: () => void
+  gasCredit?: number
 }
 
-export function BalanceCard({ onLegacyTransfer }: BalanceCardProps) {
+export function BalanceCard({ onLegacyTransfer, gasCredit = 0 }: BalanceCardProps) {
   const { balance, vaultBalance, gasFeesSaved, userProfile } = useWallet()
   const totalBalance = balance + vaultBalance
   
@@ -44,7 +45,7 @@ export function BalanceCard({ onLegacyTransfer }: BalanceCardProps) {
       </div>
       
       {/* Main Balance */}
-      <div className="mb-6">
+      <div className="mb-4">
         <div className="flex items-baseline gap-1">
           <span className="text-4xl font-bold tracking-tight text-white">${total.dollars}</span>
           <span className="text-xl font-medium text-muted-foreground">.{total.cents}</span>
@@ -52,12 +53,25 @@ export function BalanceCard({ onLegacyTransfer }: BalanceCardProps) {
         <p className="text-sm text-muted-foreground mt-1">Total Assets</p>
       </div>
 
-      {/* Gas Fees Saved Counter */}
-      <div className="flex items-center gap-2 mb-6 px-3 py-2 rounded-full bg-[#00FFA3]/5 border border-[#00FFA3]/10 w-fit">
-        <Zap className="w-4 h-4 text-[#00FFA3]" />
-        <span className="text-xs font-mono text-[#00FFA3]">
-          ${gasFeesSaved.toFixed(2)} Gas Fees Saved
-        </span>
+      {/* Web3 Stats Row */}
+      <div className="flex items-center gap-3 mb-6">
+        {/* Gas Fees Saved Counter */}
+        <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-[#00FFA3]/5 border border-[#00FFA3]/10">
+          <Zap className="w-4 h-4 text-[#00FFA3]" />
+          <span className="text-xs font-mono text-[#00FFA3]">
+            ${gasFeesSaved.toFixed(2)} Gas Saved
+          </span>
+        </div>
+
+        {/* Gas Credit Badge */}
+        {gasCredit > 0 && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-amber-500/10 border border-amber-500/20">
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <span className="text-xs font-mono text-amber-400">
+              {gasCredit.toFixed(4)} ETH Credit
+            </span>
+          </div>
+        )}
       </div>
       
       {/* Split Assets */}
