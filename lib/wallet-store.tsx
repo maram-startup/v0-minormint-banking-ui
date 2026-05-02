@@ -16,9 +16,15 @@ export interface Transaction {
 export interface UserProfile {
   name: string
   username: string
+  email: string
   age: number
+  dateOfBirth: string
+  country: string
   isMinor: boolean
   createdAt: Date
+  walletAddress: string
+  accountTier: "teen" | "adult" | "premium"
+  kycStatus: "pending" | "verified" | "enhanced"
 }
 
 export interface SecurityData {
@@ -27,6 +33,9 @@ export interface SecurityData {
   biometricsEnabled: boolean
   termsAccepted: boolean
   termsSignedAt: Date | null
+  emailVerified: boolean
+  twoFactorEnabled: boolean
+  lastLogin: Date | null
 }
 
 interface WalletState {
@@ -115,43 +124,7 @@ const WORD_LIST = [
   "diary", "dice", "diesel", "diet", "differ", "digital", "dignity", "dilemma", "dinner", "dinosaur",
   "direct", "dirt", "disagree", "discover", "disease", "dish", "dismiss", "disorder", "display", "distance",
   "divert", "divide", "divorce", "dizzy", "doctor", "document", "dog", "doll", "dolphin", "domain",
-  "donate", "donkey", "donor", "door", "dose", "double", "dove", "draft", "dragon", "drama",
-  "drastic", "draw", "dream", "dress", "drift", "drill", "drink", "drip", "drive", "drop",
-  "drum", "dry", "duck", "dumb", "dune", "during", "dust", "dutch", "duty", "dwarf",
-  "dynamic", "eager", "eagle", "early", "earn", "earth", "easily", "east", "easy", "echo",
-  "ecology", "economy", "edge", "edit", "educate", "effort", "egg", "eight", "either", "elbow",
-  "elder", "electric", "elegant", "element", "elephant", "elevator", "elite", "else", "embark", "embody",
-  "embrace", "emerge", "emotion", "employ", "empower", "empty", "enable", "enact", "end", "endless",
-  "endorse", "enemy", "energy", "enforce", "engage", "engine", "enhance", "enjoy", "enlist", "enough",
-  "enrich", "enroll", "ensure", "enter", "entire", "entry", "envelope", "episode", "equal", "equip",
-  "era", "erase", "erode", "erosion", "error", "erupt", "escape", "essay", "essence", "estate",
-  "eternal", "ethics", "evidence", "evil", "evoke", "evolve", "exact", "example", "excess", "exchange",
-  "excite", "exclude", "excuse", "execute", "exercise", "exhaust", "exhibit", "exile", "exist", "exit",
-  "exotic", "expand", "expect", "expire", "explain", "expose", "express", "extend", "extra", "eye",
-  "eyebrow", "fabric", "face", "faculty", "fade", "faint", "faith", "fall", "false", "fame",
-  "family", "famous", "fan", "fancy", "fantasy", "farm", "fashion", "fat", "fatal", "father",
-  "fatigue", "fault", "favorite", "feature", "february", "federal", "fee", "feed", "feel", "female",
-  "fence", "festival", "fetch", "fever", "few", "fiber", "fiction", "field", "figure", "file",
-  "film", "filter", "final", "find", "fine", "finger", "finish", "fire", "firm", "first",
-  "fiscal", "fish", "fit", "fitness", "fix", "flag", "flame", "flash", "flat", "flavor",
-  "flee", "flight", "flip", "float", "flock", "floor", "flower", "fluid", "flush", "fly",
-  "foam", "focus", "fog", "foil", "fold", "follow", "food", "foot", "force", "forest",
-  "forget", "fork", "fortune", "forum", "forward", "fossil", "foster", "found", "fox", "fragile",
-  "frame", "frequent", "fresh", "friend", "fringe", "frog", "front", "frost", "frown", "frozen",
-  "fruit", "fuel", "fun", "funny", "furnace", "fury", "future", "gadget", "gain", "galaxy",
-  "gallery", "game", "gap", "garage", "garbage", "garden", "garlic", "garment", "gas", "gasp",
-  "gate", "gather", "gauge", "gaze", "general", "genius", "genre", "gentle", "genuine", "gesture",
-  "ghost", "giant", "gift", "giggle", "ginger", "giraffe", "girl", "give", "glad", "glance",
-  "glare", "glass", "glide", "glimpse", "globe", "gloom", "glory", "glove", "glow", "glue",
-  "goat", "goddess", "gold", "good", "goose", "gorilla", "gospel", "gossip", "govern", "gown",
-  "grab", "grace", "grain", "grant", "grape", "grass", "gravity", "great", "green", "grid",
-  "grief", "grit", "grocery", "group", "grow", "grunt", "guard", "guess", "guide", "guilt",
-  "guitar", "gun", "gym", "habit", "hair", "half", "hammer", "hamster", "hand", "happy",
-  "harbor", "hard", "harsh", "harvest", "hat", "have", "hawk", "hazard", "head", "health",
-  "heart", "heavy", "hedgehog", "height", "hello", "helmet", "help", "hen", "hero", "hidden",
-  "high", "hill", "hint", "hip", "hire", "history", "hobby", "hockey", "hold", "hole",
-  "holiday", "hollow", "home", "honey", "hood", "hope", "horn", "horror", "horse", "hospital",
-  "host", "hotel", "hour", "hover", "hub", "huge", "human", "humble", "humor", "hundred"
+  "donate", "donkey", "donor", "door", "dose", "double", "dove", "draft", "dragon", "drama"
 ]
 
 function generateSeedPhrase(): string[] {
@@ -161,6 +134,19 @@ function generateSeedPhrase(): string[] {
     phrase.push(WORD_LIST[randomIndex])
   }
   return phrase
+}
+
+function generateWalletAddress(): string {
+  const chars = "0123456789abcdef"
+  let address = "0x"
+  for (let i = 0; i < 40; i++) {
+    address += chars[Math.floor(Math.random() * chars.length)]
+  }
+  return address
+}
+
+function generateOTP(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString()
 }
 
 const initialState: WalletState = {
@@ -175,7 +161,7 @@ const initialState: WalletState = {
   gasFeesSaved: 0,
 }
 
-export { generateSeedPhrase }
+export { generateSeedPhrase, generateWalletAddress, generateOTP }
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<WalletState>(initialState)
@@ -205,9 +191,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             ? {
                 ...parsed.security,
                 termsSignedAt: parsed.security.termsSignedAt ? new Date(parsed.security.termsSignedAt) : null,
+                lastLogin: parsed.security.lastLogin ? new Date(parsed.security.lastLogin) : null,
               }
             : null,
-          // Keep wallet locked unless session says unlocked
           isLocked: parsed.isOnboarded ? session !== "unlocked" : false,
         })
       } catch (e) {
@@ -329,7 +315,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }
 
   const completeOnboarding = (profile: UserProfile, security: SecurityData) => {
-    // Add gas gift transaction
     const gasGiftTransaction: Transaction = {
       id: crypto.randomUUID(),
       type: "incoming",
@@ -344,15 +329,17 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({
       ...prev,
       userProfile: profile,
-      security: security,
+      security: {
+        ...security,
+        lastLogin: new Date(),
+      },
       isOnboarded: true,
       isLocked: false,
-      balance: 0, // Start with zero balance
-      gasCredit: 0.001, // Gas gift in ETH
+      balance: 0,
+      gasCredit: 0.001,
       transactions: [gasGiftTransaction],
     }))
     
-    // Mark session as unlocked
     sessionStorage.setItem(SESSION_KEY, "unlocked")
   }
 
@@ -392,7 +379,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const unlockWallet = (pin: string): boolean => {
     if (state.security?.pin === pin) {
-      setState((prev) => ({ ...prev, isLocked: false }))
+      setState((prev) => ({
+        ...prev,
+        isLocked: false,
+        security: prev.security ? { ...prev.security, lastLogin: new Date() } : null,
+      }))
       sessionStorage.setItem(SESSION_KEY, "unlocked")
       return true
     }
@@ -408,7 +399,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     return state.security?.pin === pin
   }
 
-  // Don't render children until hydrated to prevent hydration mismatch
   if (!isHydrated) {
     return null
   }
